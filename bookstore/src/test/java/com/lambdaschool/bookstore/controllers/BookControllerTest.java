@@ -1,24 +1,38 @@
 package com.lambdaschool.bookstore.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lambdaschool.bookstore.BookstoreApplication;
+import com.lambdaschool.bookstore.models.Author;
 import com.lambdaschool.bookstore.models.Book;
+import com.lambdaschool.bookstore.models.Section;
+import com.lambdaschool.bookstore.models.Wrote;
 import com.lambdaschool.bookstore.services.BookService;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
 
@@ -51,6 +65,64 @@ public class BookControllerTest
     public void setUp() throws
             Exception
     {
+        Author a1 = new Author("John", "Mitchell");
+        Author a2 = new Author("Dan", "Brown");
+        Author a3 = new Author("Jerry", "Poe");
+        Author a4 = new Author("Wells", "Teague");
+        Author a5 = new Author("George", "Gallinger");
+        Author a6 = new Author("Ian", "Stewart");
+
+        a1.setAuthorid(1);
+        a2.setAuthorid(2);
+        a3.setAuthorid(3);
+        a4.setAuthorid(4);
+        a5.setAuthorid(5);
+        a6.setAuthorid(6);
+
+        Section s1 = new Section("Fiction");
+        Section s2 = new Section("Technology");
+        Section s3 = new Section("Travel");
+        Section s4 = new Section("Business");
+        Section s5 = new Section("Religion");
+
+        s1.setSectionid(10);
+        s2.setSectionid(11);
+        s3.setSectionid(12);
+        s4.setSectionid(13);
+        s5.setSectionid(14);
+
+        Book b1 = new Book("Flatterland", "9780738206752", 2001, s1);
+        b1.getWrotes()
+                .add(new Wrote(a6, new Book()));
+        b1.setBookid(20);
+
+        Book b2 = new Book("Digital Fortess", "9788489367012", 2007, s1);
+        b2.getWrotes()
+                .add(new Wrote(a2, new Book()));
+        b2.setBookid(21);
+
+        Book b3 = new Book("The Da Vinci Code", "9780307474278", 2009, s1);
+        b3.getWrotes()
+                .add(new Wrote(a2, new Book()));
+        b3.setBookid(22);
+
+        Book b4 = new Book("Essentials of Finance", "1314241651234", 0, s4);
+        b4.getWrotes()
+                .add(new Wrote(a3, new Book()));
+        b4.getWrotes()
+                .add(new Wrote(a5, new Book()));
+        b4.setBookid(23);
+
+        Book b5 = new Book("Calling Texas Home", "1885171382134", 2000, s3);
+        b5.getWrotes()
+                .add(new Wrote(a4, new Book()));
+        b5.setBookid(24);
+
+        bookList.add(b1);
+        bookList.add(b2);
+        bookList.add(b3);
+        bookList.add(b4);
+        bookList.add(b5);
         /*****
          * The following is needed due to security being in place!
          */
@@ -74,24 +146,54 @@ public class BookControllerTest
     public void listAllBooks() throws
             Exception
     {
+        Mockito.when(bookService.findAll()).thenReturn(bookList);
+        RequestBuilder rb = MockMvcRequestBuilders.get("/books/books").accept(MediaType.APPLICATION_JSON);
+        MvcResult r = mockMvc.perform(rb).andReturn();
+        String tr = r.getResponse().getContentAsString();
+
+        ObjectMapper mapper = new ObjectMapper();
+        String er = mapper.writeValueAsString(bookList);
+
+        assertEquals(er, tr);
     }
 
     @Test
     public void getBookById() throws
             Exception
     {
+
     }
 
     @Test
     public void getNoBookById() throws
             Exception
     {
+        Mockito.when(bookService.findBookById(100)).thenReturn(null);
+        RequestBuilder rb = MockMvcRequestBuilders.get("/books/book/100").accept(MediaType.APPLICATION_JSON);
+        MvcResult r = mockMvc.perform(rb).andReturn();
+        String tr = r.getResponse().getContentAsString();
+
+        assertEquals("", tr);
+
     }
 
     @Test
     public void addNewBook() throws
             Exception
     {
+        Section s1 = new Section("Fiction");
+        s1.setSectionid(19);
+        Book b1 = new Book("NewBook", "9780738206752", 2001, s1);
+        b1.setBookid(25);
+
+        ObjectMapper mapper = new ObjectMapper();
+        String bookString = mapper.writeValueAsString(b1);
+
+        Mockito.when(bookService.save(any(Book.class))).thenReturn(b1);
+        RequestBuilder rb = MockMvcRequestBuilders.post("/books/book").accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(bookString);
+        mockMvc.perform(rb).andExpect(status().isCreated()).andDo(MockMvcResultHandlers.print());
     }
 
     @Test
